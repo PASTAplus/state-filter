@@ -111,6 +111,7 @@
 - Use the most recent requirements compatible Python.
 - Use pixi for package management. There already exists a pyproject.toml file as a starting point.
 - Use click for command the line interface.
+- Use 'CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])' when setting up click.
 - Because we are dealing with XML, XML parsers should be secure.
 - Tests should be written for all functions.
 - Spatial filtering should use spatial coordinates (latitude/longitude boundaries) defined in the search result XML and should be evaluated against simplified US State polygon boundaries using shapely.geometry.Polygon and shapely.geometry.Point.

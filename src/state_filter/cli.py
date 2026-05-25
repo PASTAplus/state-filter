@@ -42,8 +42,19 @@ def merge_list_option(cli_vals: tuple[str, ...], file_val: Any) -> list[str]:
     return cleaned
 
 
+CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
+
+
 @click.command()
 @click.argument("state", type=str)
+@click.option(
+    "--mode",
+    "-m",
+    type=click.Choice(["within", "intersects"]),
+    default="within",
+    show_default=True,
+    help="Spatial filtering mode (within US State geometry vs. intersecting).",
+)
 @click.option(
     "--organization",
     "-o",
@@ -75,33 +86,25 @@ def merge_list_option(cli_vals: tuple[str, ...], file_val: Any) -> list[str]:
     help="Path to JSON file containing structured query filter options.",
 )
 @click.option(
-    "--mode",
-    "-m",
-    type=click.Choice(["within", "intersects"]),
-    default="within",
-    show_default=True,
-    help="Spatial filtering mode (within US State geometry vs. intersecting).",
-)
-@click.option(
-    "--api-key",
-    help="Optional API key query parameter to append to PASTA REST API requests.",
-)
-@click.option(
     "--connector",
     "-c",
     type=click.Choice(["and", "or"]),
     help="Logical connector for combining semantic options. [default: or]",
 )
+@click.option(
+    "--api-key",
+    help="Optional API key query parameter to append to PASTA REST API requests.",
+)
 def main(
     state: str,
+    mode: str,
     organization: tuple[str, ...],
     geographic: tuple[str, ...],
     keyword: tuple[str, ...],
     abstract: tuple[str, ...],
     options_file: str | None,
-    mode: str,
-    api_key: str | None = None,
     connector: str | None = None,
+    api_key: str | None = None,
 ) -> None:
     """Filter EDI PASTA data packages by US State and semantic options.
 
