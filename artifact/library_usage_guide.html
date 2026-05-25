@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Library Integration Guide - State-Filter</title>
+    <style>
+        /* Modern light-mode styling with professional typography and generous whitespace */
+        :root {
+            --primary-color: #2b6cb0;
+            --primary-dark: #2c5282;
+            --text-color: #2d3748;
+            --bg-color: #f7fafc;
+            --card-bg: #ffffff;
+            --border-color: #e2e8f0;
+            --alert-border: #3182ce;
+            --alert-bg: #ebf8ff;
+            --heading-color: #1a202c;
+            --code-bg: #edf2f7;
+            --code-color: #805ad5;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            line-height: 1.6;
+            margin: 0;
+            padding: 2rem 1rem;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            padding: 3rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border: 1px solid var(--border-color);
+        }
+
+        h1 {
+            color: var(--heading-color);
+            font-size: 2.25rem;
+            margin-top: 0;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.5rem;
+        }
+
+        h2 {
+            color: var(--heading-color);
+            font-size: 1.5rem;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.25rem;
+        }
+
+        h3 {
+            color: var(--primary-dark);
+            font-size: 1.2rem;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        p {
+            margin-top: 0;
+            margin-bottom: 1.25rem;
+        }
+
+        ul {
+            margin-top: 0;
+            margin-bottom: 1.25rem;
+            padding-left: 1.5rem;
+        }
+
+        li {
+            margin-bottom: 0.5rem;
+        }
+
+        code {
+            font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, Courier, monospace;
+            background-color: var(--code-bg);
+            color: var(--code-color);
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background-color: #1a202c;
+            color: #f7fafc;
+            padding: 1rem;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin-top: 0;
+            margin-bottom: 1.25rem;
+        }
+
+        pre code {
+            background-color: transparent;
+            color: inherit;
+            padding: 0;
+            font-size: 0.9em;
+        }
+
+        a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        hr {
+            border: 0;
+            height: 1px;
+            background: var(--border-color);
+            margin: 2.5rem 0;
+        }
+
+        /* Print-friendly stylesheet */
+        @media print {
+            body {
+                background-color: #fff;
+                color: #000;
+                padding: 0;
+            }
+
+            .container {
+                box-shadow: none;
+                border: none;
+                padding: 0;
+                max-width: 100%;
+            }
+
+            pre {
+                background-color: #fff;
+                color: #000;
+                border: 1px solid #ccc;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+            }
+
+            pre code {
+                color: #000;
+            }
+
+            code {
+                background-color: #f7f7f7;
+                border: 1px solid #ddd;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Library Integration Guide - State-Filter</h1>
+        <p>This document outlines how to programmatically use the <code>state-filter</code> package as a library within other Python applications, bypass the CLI, and interact directly with the geospatial and data retrieval APIs.</p>
+
+        <hr>
+
+        <h2 id="exposed-api-interface">📦 Exposed API Interface</h2>
+        <p>All public-facing methods are exposed directly at the package root via standard imports. You do not need to query submodules like <code>geo</code> or <code>pasta</code> directly.</p>
+
+        <h3>Core Exposed Functions</h3>
+        <ul>
+            <li><code>load_state_geometry(state_name: str) -&gt; BaseGeometry</code>: Resolves and merges US state geometries from the bundled GeoJSON. Returns a Shapely <code>Polygon</code> or <code>MultiPolygon</code> with topological self-intersections automatically repaired.</li>
+            <li><code>search_and_filter_all(state_name: str, semantic_options: dict, state_geometry: BaseGeometry, mode: str) -&gt; list[str]</code>: Performs automatic, paginated Solr search operations over the EDI PASTA API and filters results using Shapely containment/intersection testing.</li>
+            <li><code>load_state_bbox(state_name: str) -&gt; dict[str, float]</code>: Returns the pre-computed Solr spatial range limits mapping <code>{"minLon", "maxLon", "maxLat", "minLat"}</code>.</li>
+            <li><code>validate_coordinates(lon: float, lat: float) -&gt; bool</code>: Validates decimal coordinates boundaries range checking.</li>
+        </ul>
+
+        <hr>
+
+        <h2 id="code-example">💻 Code Example</h2>
+        <p>Here is a complete integration script showing how to load boundaries, specify filters, and query the PASTA database programmatically:</p>
+        <pre><code>import shapely.geometry
+from state_filter import load_state_geometry, search_and_filter_all
+
+# 1. Resolve target US State geometry (as a Shapely Polygon or MultiPolygon)
+state_geom = load_state_geometry("South Carolina")
+
+# 2. Define semantic filters (keys accept single strings or lists of strings)
+filters = {
+    "keyword": ["sediment", "estuary"],
+    "organization": "NIN-LTER"
+}
+
+# 3. Query PASTA API in a paginated loop and filter spatially
+package_ids = search_and_filter_all(
+    state_name="South Carolina",
+    semantic_options=filters,
+    state_geometry=state_geom,
+    mode="intersects"  # "within" checks strict full containment, "intersects" includes border-crossing boxes
+)
+
+# 4. Consume matching package IDs
+for pkg_id in package_ids:
+    print(f"Matched package: {pkg_id}")</code></pre>
+
+        <hr>
+
+        <h2 id="advantages-of-programmatic-integration">🛠️ Advantages of Programmatic Integration</h2>
+        <ol>
+            <li><strong>Robust Type Hinting:</strong> Strict PEP 484 type annotations on all signatures provide comprehensive auto-completion, linting, and structural verification inside PyCharm, VS Code, and other IDEs.</li>
+            <li><strong>Self-Contained Spatial Resolving:</strong> The package contains its own lightweight, offline coordinates data bundle. No geographic API requests are made to resolve US State shapes or bounding boxes.</li>
+            <li><strong>Built-in XML Security:</strong> Standard <code>defusedxml.ElementTree</code> parsing is handled transparently inside the package, protecting your hosting infrastructure from XXE (XML External Entity Injection) and Billion Laughs vulnerability vectors automatically.</li>
+        </ol>
+    </div>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "abstract": [
+    "Vernberg",
+    "estuary"
+  ],
+  "organization": [
+    "NIN-LTER"
+  ],
+  "keyword": [
+    "sediment",
+    "sand"
+  ],
+  "geographic": [
+    "North Inlet"
+  ],
+  "api_key": "YOUR_PASTA_API_KEY_HERE"
+}

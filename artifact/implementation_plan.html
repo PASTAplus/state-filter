@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Implementation Plan - Project State-Filter</title>
+    <style>
+        /* Modern light-mode styling with professional typography and generous whitespace */
+        :root {
+            --primary-color: #2b6cb0;
+            --primary-dark: #2c5282;
+            --text-color: #2d3748;
+            --bg-color: #f7fafc;
+            --card-bg: #ffffff;
+            --border-color: #e2e8f0;
+            --alert-border: #3182ce;
+            --alert-bg: #ebf8ff;
+            --heading-color: #1a202c;
+            --code-bg: #edf2f7;
+            --code-color: #805ad5;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            line-height: 1.6;
+            margin: 0;
+            padding: 2rem 1rem;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            padding: 3rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border: 1px solid var(--border-color);
+        }
+
+        h1 {
+            color: var(--heading-color);
+            font-size: 2.25rem;
+            margin-top: 0;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.5rem;
+        }
+
+        h2 {
+            color: var(--heading-color);
+            font-size: 1.5rem;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.25rem;
+        }
+
+        h3 {
+            color: var(--primary-dark);
+            font-size: 1.2rem;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        h4 {
+            font-size: 1.05rem;
+            margin-top: 1.25rem;
+            margin-bottom: 0.5rem;
+            color: var(--heading-color);
+        }
+
+        p {
+            margin-top: 0;
+            margin-bottom: 1.25rem;
+        }
+
+        ul, ol {
+            margin-top: 0;
+            margin-bottom: 1.25rem;
+            padding-left: 1.5rem;
+        }
+
+        li {
+            margin-bottom: 0.5rem;
+        }
+
+        code {
+            font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, Courier, monospace;
+            background-color: var(--code-bg);
+            color: var(--code-color);
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background-color: #1a202c;
+            color: #f7fafc;
+            padding: 1rem;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin-top: 0;
+            margin-bottom: 1.25rem;
+        }
+
+        pre code {
+            background-color: transparent;
+            color: inherit;
+            padding: 0;
+            font-size: 0.9em;
+        }
+
+        blockquote.important {
+            background-color: var(--alert-bg);
+            border-left: 4px solid var(--alert-border);
+            padding: 1rem 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 0 6px 6px 0;
+        }
+
+        blockquote.important p {
+            margin: 0;
+        }
+
+        blockquote.important ul {
+            margin-bottom: 0;
+            margin-top: 0.5rem;
+        }
+
+        a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        hr {
+            border: 0;
+            height: 1px;
+            background: var(--border-color);
+            margin: 2.5rem 0;
+        }
+
+        /* Print-friendly stylesheet */
+        @media print {
+            body {
+                background-color: #fff;
+                color: #000;
+                padding: 0;
+            }
+
+            .container {
+                box-shadow: none;
+                border: none;
+                padding: 0;
+                max-width: 100%;
+            }
+
+            pre {
+                background-color: #fff;
+                color: #000;
+                border: 1px solid #ccc;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+            }
+
+            pre code {
+                color: #000;
+            }
+
+            code {
+                background-color: #f7f7f7;
+                border: 1px solid #ddd;
+            }
+
+            blockquote.important {
+                background-color: #fff;
+                border-left: 4px solid #000;
+                border-top: 1px solid #ddd;
+                border-right: 1px solid #ddd;
+                border-bottom: 1px solid #ddd;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Implementation Plan - Project State-Filter</h1>
+        <p>A command line application to discover and filter EDI PASTA data packages by US State using Solr spatial search and high-precision Shapely polygon boundaries.</p>
+
+        <h2 id="user-review-required">User Review Required</h2>
+        <blockquote class="important">
+            <p><strong>Key Decisions Adopted:</strong></p>
+            <ul>
+                <li><strong>US State Polygons:</strong> Offline, bundled lightweight GeoJSON file containing US state boundaries (including multipolygons for islands/borders).</li>
+                <li><strong>Solr Bounding Boxes:</strong> Pre-computed and saved to a JSON file <code>bounding_boxes.json</code> mapping each state to <code>{"minLon": ..., "maxLon": ..., "maxLat": ..., "minLat": ...}</code> coordinates in key-value form to prevent coordinate-ordering mistakes.</li>
+                <li><strong>CLI Design:</strong>
+                    <ul>
+                        <li>Uses <code>click</code>.</li>
+                        <li>Allows multiple values for semantic options (e.g., <code>--keyword sediment --keyword sand</code>).</li>
+                        <li>Supports <code>--options-file &lt;path&gt;</code> in JSON format to load complex/long lists of options.</li>
+                        <li><code>--mode</code> options are <code>within</code> (default) and <code>intersects</code>.</li>
+                    </ul>
+                </li>
+                <li><strong>XML Security:</strong> Uses standard <code>defusedxml.ElementTree</code> to securely parse XML response payloads from PASTA.</li>
+            </ul>
+        </blockquote>
+
+        <hr>
+
+        <h2 id="proposed-changes">Proposed Changes</h2>
+
+        <h3>Dependencies & Setup</h3>
+        <p>We will update <code>pyproject.toml</code> to install:</p>
+        <ul>
+            <li><code>click</code> (CLI library)</li>
+            <li><code>requests</code> (API requests)</li>
+            <li><code>shapely</code> (Geospatial calculations)</li>
+            <li><code>defusedxml</code> (Secure XML parsing)</li>
+        </ul>
+
+        <h4>[MODIFY] <a href="file:///home/servilla/git/state-filter/pyproject.toml">pyproject.toml</a></h4>
+        <ul>
+            <li>Add dependencies: <code>click</code>, <code>requests</code>, <code>shapely</code>, <code>defusedxml</code>.</li>
+            <li>Define CLI entry point: <code>state-filter = "state_filter.cli:main"</code>.</li>
+            <li>Configure Pixi tasks for running tests and CLI verification.</li>
+        </ul>
+
+        <hr>
+
+        <h3>Data Assets</h3>
+
+        <h4>[NEW] <a href="file:///home/servilla/git/state-filter/src/state_filter/data/us_states.geojson">us_states.geojson</a></h4>
+        <p>A bundled, lightweight, simplified GeoJSON file containing coordinates and properties of all US States (including multipolygons for Alaska, Hawaii, etc.). We will fetch or compile a highly optimized/simplified version.</p>
+
+        <h4>[NEW] <a href="file:///home/servilla/git/state-filter/src/state_filter/data/bounding_boxes.json">bounding_boxes.json</a></h4>
+        <p>Generated JSON map of state names to their exact bounding boxes (<code>minLon</code>, <code>maxLon</code>, <code>maxLat</code>, <code>minLat</code>).</p>
+        <p>We will write a small helper utility <code>scratch/prepare_data.py</code> to extract these bounding boxes directly from <code>us_states.geojson</code> and save them.</p>
+
+        <hr>
+
+        <h3>Source Code</h3>
+
+        <h4>[MODIFY] <a href="file:///home/servilla/git/state-filter/src/state_filter/__init__.py">__init__.py</a></h4>
+        <p>Expose key classes/functions if needed.</p>
+
+        <h4>[NEW] <a href="file:///home/servilla/git/state-filter/src/state_filter/geo.py">geo.py</a></h4>
+        <ul>
+            <li><code>load_state_geometry(state_name: str) -&gt; shapely.geometry.base.BaseGeometry</code>: Loads and merges state geometry from the bundled GeoJSON. Handles Multipolygons and Polygons.</li>
+            <li><code>load_state_bbox(state_name: str) -&gt; dict[str, float]</code>: Loads pre-computed bounding box for a state from <code>bounding_boxes.json</code>.</li>
+            <li><code>validate_coordinates(lon: float, lat: float) -&gt; bool</code>: Helper to ensure values are in standard ranges.</li>
+        </ul>
+
+        <h4>[NEW] <a href="file:///home/servilla/git/state-filter/src/state_filter/pasta.py">pasta.py</a></h4>
+        <ul>
+            <li><code>build_solr_query(state_name: str, semantic_options: dict) -&gt; str</code>: Constructs the Solr query URL for PASTA search using <code>coordinates:IsWithin(West+East+North+South)</code> and other semantic query tokens.</li>
+            <li><code>search_pasta(query_url: str) -&gt; str</code>: Executes the HTTP GET request to PASTA API and handles errors.</li>
+            <li><code>parse_and_filter_results(xml_content: str, state_geometry: shapely.geometry.base.BaseGeometry, mode: str) -&gt; list[str]</code>:
+                <ul>
+                    <li>Parses search XML securely using <code>defusedxml.ElementTree</code>.</li>
+                    <li>Extracts each <code>&lt;document&gt;</code>'s <code>&lt;packageid&gt;</code> and <code>&lt;coordinates&gt;</code> (inside <code>&lt;spatialCoverage&gt;</code>).</li>
+                    <li>Converts the coordinates string (e.g. <code>-79.2936 33.1925 -79.1042 33.357</code>) into a Shapely <code>box(minLon, minLat, maxLon, maxLat)</code>.</li>
+                    <li>Performs high-precision filtering:
+                        <ul>
+                            <li><code>within</code>: <code>state_geometry.contains(pkg_box)</code></li>
+                            <li><code>intersects</code>: <code>state_geometry.intersects(pkg_box)</code></li>
+                        </ul>
+                    </li>
+                    <li>Returns list of matching package identifiers (<code>packageid</code>).</li>
+                </ul>
+            </li>
+        </ul>
+
+        <h4>[NEW] <a href="file:///home/servilla/git/state-filter/src/state_filter/cli.py">cli.py</a></h4>
+        <p>Click CLI command layout:</p>
+        <pre><code>@click.command()
+@click.argument("state", type=str)
+@click.option("--organization", "-o", multiple=True, help="Filter by organization name.")
+@click.option("--geographic", "-g", multiple=True, help="Filter by geographic place name.")
+@click.option("--keyword", "-k", multiple=True, help="Filter by keyword.")
+@click.option("--abstract", "-a", multiple=True, help="Filter by abstract content.")
+@click.option("--options-file", "-f", type=click.Path(exists=True), help="Path to JSON file with additional options.")
+@click.option("--mode", "-m", type=click.Choice(["within", "intersects"]), default="within", show_default=True, help="Spatial filtering precision mode.")</code></pre>
+        <ul>
+            <li>Combines command line parameters and option files (if provided).</li>
+            <li>Calls the search and filtering logic in <code>pasta.py</code>.</li>
+            <li>Outputs the resulting list of matching package identifiers to standard output (one per line).</li>
+        </ul>
+
+        <hr>
+
+        <h2 id="verification-plan">Verification Plan</h2>
+
+        <h3>Automated Tests</h3>
+        <p>We will add <code>pytest</code> unit and integration tests under <code>tests/</code>:</p>
+        <ul>
+            <li><strong><code>tests/test_geo.py</code></strong>:
+                <ul>
+                    <li>Verify <code>load_state_bbox</code> returns the correct coordinates.</li>
+                    <li>Verify geometry containment and intersection queries for test coordinates using Shapely.</li>
+                </ul>
+            </li>
+            <li><strong><code>tests/test_pasta.py</code></strong>:
+                <ul>
+                    <li>Mock API responses to test <code>build_solr_query</code> URL generation with various combinations of CLI inputs.</li>
+                    <li>Mock responses to test <code>parse_and_filter_results</code> with defusedxml, confirming strict <code>within</code> and <code>intersects</code> precision.</li>
+                </ul>
+            </li>
+            <li><strong><code>tests/test_cli.py</code></strong>:
+                <ul>
+                    <li>Use Click <code>CliRunner</code> to test CLI argument parsing, including options files and multi-value options.</li>
+                </ul>
+            </li>
+        </ul>
+
+        <h3>Manual Verification</h3>
+        <ul>
+            <li>Execute CLI commands targeting different states (e.g. <code>"South Carolina"</code>, <code>"California"</code>) with single and multiple options.</li>
+            <li>Provide an options JSON file and confirm it merges correctly with CLI arguments.</li>
+        </ul>
+    </div>
+</body>
+</html>
