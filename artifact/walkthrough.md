@@ -31,12 +31,18 @@ We have completed the implementation of the `state-filter` command line applicat
 * Combined and deduplicated matching package IDs across all query pages seamlessly.
 * Updated `cli.py` to route all queries through this paginated wrapper automatically.
 
-### 5. API Key Parameter Routing
+### 5. Configurable Semantic Connectors (AND / OR)
+* Implemented a new option `--connector` / `-c` allowing users to determine the logical operator used to combine different semantic query terms (such as keywords, abstracts, organizations, and place names).
+* **Logical OR by Default:** In accordance with the project requirements, different semantic criteria are combined using a logical **`OR`** by default (e.g. `q=keyword:"sediment" OR organization:"NIN-LTER"`).
+* **Guaranteed Bounding Box AND-ing:** The spatial bounding box coordinates filter query (`fq=coordinates:IsWithin(...)`) is always combined as a logical **`AND`**, ensuring that spatial results are strictly intersected regardless of the semantic options configuration.
+* Added support in options files to load the `"connector"` key programmatically.
+
+### 6. API Key Parameter Routing
 * Implemented support for appending an API key as a query parameter named `key` at the end of the PASTA URL.
 * Exposed the CLI switch `--api-key` to pass the key parameter securely at runtime.
 * Added matching JSON options file support to parse `"api_key"` or `"key"` parameters from structured configurations automatically.
 
-### 6. Click CLI & Options File Merge (`state_filter/cli.py`)
+### 7. Click CLI & Options File Merge (`state_filter/cli.py`)
 * Created the primary Click command routing standard arguments (`STATE`) and options (`--keyword`, `--organization`, `--geographic`, `--abstract`).
 * Enabled multi-value parameters (e.g. `--keyword sediment --keyword sand`).
 * Supported a structured `--options-file <path>` in JSON format to merge complex nested configurations gracefully.
@@ -46,15 +52,15 @@ We have completed the implementation of the `state-filter` command line applicat
 ## 🧪 Verification & Quality Control
 
 ### 1. Pytest Suite
-We implemented 23 distinct tests verifying every tier of the application under `tests/`:
+We implemented 24 distinct tests verifying every tier of the application under `tests/`:
 * **`tests/test_geo.py`**: Asserts bounding boxes, boundary containment/intersections, and coordinates validation range limits.
-* **`tests/test_pasta.py`**: Confirms correct Solr eDisMax query serialization, WKT encoding, secure parsing, and **verifies both paginated query offsets and api-key forwarding**.
-* **`tests/test_cli.py`**: Uses Click `CliRunner` to check options parsing, file merging logic, standard output, and **verifies that --api-key arguments are correctly forwarded to the API**.
+* **`tests/test_pasta.py`**: Confirms correct Solr eDisMax query serialization, WKT encoding, secure parsing, and **verifies both paginated query offsets, api-key forwarding, and custom logical connectors (AND/OR)**.
+* **`tests/test_cli.py`**: Uses Click `CliRunner` to check options parsing, file merging logic, standard output, and **verifies that --api-key and --connector arguments are correctly forwarded**.
 
 ```bash
 pixi run test
 ```
-**Results:** `23 passed in 0.19s` (100% success).
+**Results:** `24 passed in 0.22s` (100% success).
 
 ### 2. Formatting & Linting
 Enforced ruff linter and PEP 8 styling completely:
@@ -65,7 +71,11 @@ pixi run format # Clean format enforcement on all files.
 
 ### 3. Manual Live Execution
 ```bash
-# Querying South Carolina in intersects mode with dummy api-key parameter
-pixi run state-filter "South Carolina" --keyword sediment --mode intersects --api-key "test_key_abc"
+# Querying South Carolina in intersects mode using logical AND to combine criteria
+pixi run state-filter "South Carolina" --organization NIN-LTER --keyword dummy --mode intersects --connector and
+# Output is empty (as expected because there are no packages with keyword "dummy")
+
+# Querying South Carolina in intersects mode using logical OR to combine criteria (default)
+pixi run state-filter "South Carolina" --organization NIN-LTER --keyword dummy --mode intersects --connector or
+# Output: knb-lter-nin.8.1 (and 17 others matching organization "NIN-LTER")
 ```
-**Output:** `knb-lter-nin.8.1` (successfully matching the EDI database in real-time).

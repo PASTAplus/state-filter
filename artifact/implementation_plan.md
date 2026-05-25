@@ -8,12 +8,16 @@ A command line application to discover and filter EDI PASTA data packages by US 
 > **Key Decisions Adopted:**
 > 1. **US State Polygons:** Offline, bundled lightweight GeoJSON file containing US state boundaries (including multipolygons for islands/borders).
 > 2. **Solr Bounding Boxes:** Pre-computed and saved to a JSON file `bounding_boxes.json` mapping each state to `{"minLon": ..., "maxLon": ..., "maxLat": ..., "minLat": ...}` coordinates in key-value form to prevent coordinate-ordering mistakes.
-> 3. **CLI Design:**
+> 3. **Configurable Logical Connectors (AND / OR):**
+>    - Uses `--connector` / `-c` (choice `["and", "or"]`, defaulting to `"or"`) to combine semantic search terms.
+>    - Bounding box spatial queries are **always** strictly intersected (logical `AND` via `fq` parameters), ensuring results are spatially correct regardless of semantic configuration.
+> 4. **CLI Design:**
 >    - Uses `click`.
 >    - Allows multiple values for semantic options (e.g., `--keyword sediment --keyword sand`).
 >    - Supports `--options-file <path>` in JSON format to load complex/long lists of options.
 >    - `--mode` options are `within` (default) and `intersects`.
-> 4. **XML Security:** Uses standard `defusedxml.ElementTree` to securely parse XML response payloads from PASTA.
+>    - Supports `--api-key` (forwarded as query parameter `key`).
+> 5. **XML Security:** Uses standard `defusedxml.ElementTree` to securely parse XML response payloads from PASTA.
 
 ---
 
@@ -55,31 +59,27 @@ We will update `pyproject.toml` to install:
 * `validate_coordinates(lon: float, lat: float) -> bool`: Helper to ensure values are in standard ranges.
 
 #### [NEW] [pasta.py](file:///home/servilla/git/state-filter/src/state_filter/pasta.py)
-* `build_solr_query(state_name: str, semantic_options: dict) -> str`: Constructs the Solr query URL for PASTA search using `coordinates:IsWithin(West+East+North+South)` and other semantic query tokens.
-* `search_pasta(query_url: str) -> str`: Executes the HTTP GET request to PASTA API and handles errors.
-* `parse_and_filter_results(xml_content: str, state_geometry: shapely.geometry.base.BaseGeometry, mode: str) -> list[str]`:
-  * Parses search XML securely using `defusedxml.ElementTree`.
-  * Extracts each `<document>`'s `<packageid>` and `<coordinates>` (inside `<spatialCoverage>`).
-  * Converts the coordinates string (e.g. `-79.2936 33.1925 -79.1042 33.357`) into a Shapely `box(minLon, minLat, maxLon, maxLat)`.
-  * Performs high-precision filtering:
-    * `within`: `state_geometry.contains(pkg_box)`
-    * `intersects`: `state_geometry.intersects(pkg_box)`
-  * Returns list of matching package identifiers (`packageid`).
+* `build_solr_query(state_name: str, semantic_options: dict, start: int = 0, rows: int = 1000, api_key: str | None = None, connector: str = "or") -> list[tuple[str, str]]`: Constructs the Solr query URL for PASTA search using WKT `coordinates:"IsWithin(ENVELOPE(minLon, maxLon, maxLat, minLat))"`, custom logical connector, and other parameters.
+* `search_pasta(query_params: list[tuple[str, str]], timeout: int = 30) -> str`: Executes the HTTP GET request to PASTA API and handles errors.
+* `parse_and_filter_results(xml_content: str, state_geometry: shapely.geometry.base.BaseGeometry, mode: str) -> list[str]`: Securely parses returned coordinates and filters by polygon boundaries.
+* `search_and_filter_all(state_name: str, semantic_options: dict, state_geometry: BaseGeometry, mode: str, api_key: str | None = None, connector: str = "or") -> list[str]`: Implements the paginated loop to retrieve and filter all matches.
 
 #### [NEW] [cli.py](file:///home/servilla/git/state-filter/src/state_filter/cli.py)
 * Click CLI command layout:
   ```python
   @click.command()
   @click.argument("state", type=str)
-  @click.option("--organization", "-o", multiple=True, help="Filter by organization name.")
-  @click.option("--geographic", "-g", multiple=True, help="Filter by geographic place name.")
-  @click.option("--keyword", "-k", multiple=True, help="Filter by keyword.")
-  @click.option("--abstract", "-a", multiple=True, help="Filter by abstract content.")
-  @click.option("--options-file", "-f", type=click.Path(exists=True), help="Path to JSON file with additional options.")
-  @click.option("--mode", "-m", type=click.Choice(["within", "intersects"]), default="within", show_default=True, help="Spatial filtering precision mode.")
+  @click.option("--organization", "-o", multiple=True)
+  @click.option("--geographic", "-g", multiple=True)
+  @click.option("--keyword", "-k", multiple=True)
+  @click.option("--abstract", "-a", multiple=True)
+  @click.option("--options-file", "-f", type=click.Path(exists=True))
+  @click.option("--mode", "-m", type=click.Choice(["within", "intersects"]), default="within")
+  @click.option("--api-key")
+  @click.option("--connector", "-c", type=click.Choice(["and", "or"]))
   ```
-* Combines command line parameters and option files (if provided).
-* Calls the search and filtering logic in `pasta.py`.
+* Combines command line parameters and option files.
+* Calls `search_and_filter_all` inside `pasta.py`.
 * Outputs the resulting list of matching package identifiers to standard output (one per line).
 
 ---
@@ -88,15 +88,10 @@ We will update `pyproject.toml` to install:
 
 ### Automated Tests
 We will add `pytest` unit and integration tests under `tests/`:
-* **`tests/test_geo.py`**:
-  * Verify `load_state_bbox` returns the correct coordinates.
-  * Verify geometry containment and intersection queries for test coordinates using Shapely.
-* **`tests/test_pasta.py`**:
-  * Mock API responses to test `build_solr_query` URL generation with various combinations of CLI inputs.
-  * Mock responses to test `parse_and_filter_results` with defusedxml, confirming strict `within` and `intersects` precision.
-* **`tests/test_cli.py`**:
-  * Use Click `CliRunner` to test CLI argument parsing, including options files and multi-value options.
+* **`tests/test_geo.py`**: Verify bounding box loading and coordinate range validation.
+* **`tests/test_pasta.py`**: Verify Solr eDisMax query serialization, WKT coordinates, paginated loop mockups, and `AND` vs. `OR` logical connector combinations.
+* **`tests/test_cli.py`**: Verify click CLI argument parsing, option file merges, `--api-key` routing, and `--connector` forwarding.
 
 ### Manual Verification
-* Execute CLI commands targeting different states (e.g. `"South Carolina"`, `"California"`) with single and multiple options.
-* Provide an options JSON file and confirm it merges correctly with CLI arguments.
+* Execute CLI commands with combinations of multiple options.
+* Toggle `--connector and` and `--connector or` to verify query filtering behavior matches expectations.

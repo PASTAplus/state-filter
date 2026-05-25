@@ -200,16 +200,24 @@
             <li>Updated <code>cli.py</code> to route all queries through this paginated wrapper automatically.</li>
         </ul>
 
-        <h3>5. API Key Parameter Routing</h3>
+        <h3>5. Configurable Semantic Connectors (AND / OR)</h3>
+        <ul>
+            <li>Implemented a new option <code>--connector</code> / <code>-c</code> allowing users to determine the logical operator used to combine different semantic query terms (such as keywords, abstracts, organizations, and place names).</li>
+            <li><strong>Logical OR by Default:</strong> In accordance with the project requirements, different semantic criteria are combined using a logical <strong><code>OR</code></strong> by default (e.g. <code>q=keyword:"sediment" OR organization:"NIN-LTER"</code>).</li>
+            <li><strong>Guaranteed Bounding Box AND-ing:</strong> The spatial bounding box coordinates filter query (<code>fq=coordinates:IsWithin(...)</code>) is always combined as a logical <strong><code>AND</code></strong>, ensuring that spatial results are strictly intersected regardless of the semantic options configuration.</li>
+            <li>Added support in options files to load the <code>"connector"</code> key programmatically.</li>
+        </ul>
+
+        <h3>6. API Key Parameter Routing</h3>
         <ul>
             <li>Implemented support for appending an API key as a query parameter named <code>key</code> at the end of the PASTA URL.</li>
             <li>Exposed the CLI switch <code>--api-key</code> to pass the key parameter securely at runtime.</li>
             <li>Added matching JSON options file support to parse <code>"api_key"</code> or <code>"key"</code> parameters from structured configurations automatically.</li>
         </ul>
 
-        <h3>6. Click CLI & Options File Merge (<code>state_filter/cli.py</code>)</h3>
+        <h3>7. Click CLI & Options File Merge (<code>state_filter/cli.py</code>)</h3>
         <ul>
-            <li>Created the primary Click command routing standard arguments (<code>STATE</code>) and options (<code>--organization</code>, <code>--geographic</code>, <code>--keyword</code>, <code>--abstract</code>).</li>
+            <li>Created the primary Click command routing standard arguments (<code>STATE</code>) and options (<code>--keyword</code>, <code>--organization</code>, <code>--geographic</code>, <code>--abstract</code>).</li>
             <li>Enabled multi-value parameters (e.g. <code>--keyword sediment --keyword sand</code>).</li>
             <li>Supported a structured <code>--options-file &lt;path&gt;</code> in JSON format to merge complex nested configurations gracefully.</li>
         </ul>
@@ -219,14 +227,14 @@
         <h2 id="verification-quality-control">🧪 Verification & Quality Control</h2>
 
         <h3>1. Pytest Suite</h3>
-        <p>We implemented 23 distinct tests verifying every tier of the application under <code>tests/</code>:</p>
+        <p>We implemented 24 distinct tests verifying every tier of the application under <code>tests/</code>:</p>
         <ul>
             <li><strong><code>tests/test_geo.py</code></strong>: Asserts bounding boxes, boundary containment/intersections, and coordinates validation range limits.</li>
-            <li><strong><code>tests/test_pasta.py</code></strong>: Confirms correct Solr eDisMax query serialization, WKT encoding, secure parsing, and <strong>verifies both paginated query offsets and api-key forwarding</strong>.</li>
-            <li><strong><code>tests/test_cli.py</code></strong>: Uses Click <code>CliRunner</code> to check options parsing, file merging logic, standard output, and <strong>verifies that --api-key arguments are correctly forwarded to the API</strong>.</li>
+            <li><strong><code>tests/test_pasta.py</code></strong>: Confirms correct Solr eDisMax query serialization, WKT encoding, secure parsing, and <strong>verifies both paginated query offsets, api-key forwarding, and custom logical connectors (AND/OR)</strong>.</li>
+            <li><strong><code>tests/test_cli.py</code></strong>: Uses Click <code>CliRunner</code> to check options parsing, file merging logic, standard output, and <strong>verifies that --api-key and --connector arguments are correctly forwarded</strong>.</li>
         </ul>
         <pre><code>pixi run test</code></pre>
-        <p><strong>Results:</strong> <code>23 passed in 0.19s</code> (100% success).</p>
+        <p><strong>Results:</strong> <code>24 passed in 0.22s</code> (100% success).</p>
 
         <h3>2. Formatting & Linting</h3>
         <p>Enforced ruff linter and PEP 8 styling completely:</p>
@@ -234,9 +242,13 @@
 pixi run format # Clean format enforcement on all files.</code></pre>
 
         <h3>3. Manual Live Execution</h3>
-        <pre><code># Querying South Carolina in intersects mode with dummy api-key parameter
-pixi run state-filter "South Carolina" --keyword sediment --mode intersects --api-key "test_key_abc"</code></pre>
-        <p><strong>Output:</strong> <code>knb-lter-nin.8.1</code> (successfully matching the EDI database in real-time).</p>
+        <pre><code># Querying South Carolina in intersects mode using logical AND to combine criteria
+pixi run state-filter "South Carolina" --organization NIN-LTER --keyword dummy --mode intersects --connector and
+# Output is empty (as expected because there are no packages with keyword "dummy")
+
+# Querying South Carolina in intersects mode using logical OR to combine criteria (default)
+pixi run state-filter "South Carolina" --organization NIN-LTER --keyword dummy --mode intersects --connector or
+# Output: knb-lter-nin.8.1 (and 17 others matching organization "NIN-LTER")</code></pre>
     </div>
 </body>
 </html>

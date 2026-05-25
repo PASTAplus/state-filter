@@ -12,7 +12,7 @@ All public-facing methods are exposed directly at the package root via standard 
 
 * `load_state_geometry(state_name: str) -> BaseGeometry`
   * Resolves and merges US state geometries from the bundled GeoJSON. Returns a Shapely `Polygon` or `MultiPolygon` with topological self-intersections automatically repaired.
-* `search_and_filter_all(state_name: str, semantic_options: dict, state_geometry: BaseGeometry, mode: str) -> list[str]`
+* `search_and_filter_all(state_name: str, semantic_options: dict, state_geometry: BaseGeometry, mode: str, api_key: str | None = None, connector: str = "or") -> list[str]`
   * Performs automatic, paginated Solr search operations over the EDI PASTA API and filters results using Shapely containment/intersection testing.
 * `load_state_bbox(state_name: str) -> dict[str, float]`
   * Returns the pre-computed Solr spatial range limits mapping `{"minLon", "maxLon", "maxLat", "minLat"}`.
@@ -43,7 +43,9 @@ package_ids = search_and_filter_all(
     state_name="South Carolina",
     semantic_options=filters,
     state_geometry=state_geom,
-    mode="intersects"  # "within" checks strict full containment, "intersects" includes border-crossing boxes
+    mode="intersects",      # "within" checks strict full containment, "intersects" includes border-crossing boxes
+    api_key="your_secret_key",
+    connector="or"         # Combines keywords and organization using "OR" (default), or "and" for strict matching
 )
 
 # 4. Consume matching package IDs

@@ -13,5 +13,6 @@
   "geographic": [
     "North Inlet"
   ],
-  "api_key": "YOUR_PASTA_API_KEY_HERE"
+  "api_key": "YOUR_PASTA_API_KEY_HERE",
+  "connector": "or"
 }

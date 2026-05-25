@@ -168,7 +168,7 @@
         <h3>Core Exposed Functions</h3>
         <ul>
             <li><code>load_state_geometry(state_name: str) -&gt; BaseGeometry</code>: Resolves and merges US state geometries from the bundled GeoJSON. Returns a Shapely <code>Polygon</code> or <code>MultiPolygon</code> with topological self-intersections automatically repaired.</li>
-            <li><code>search_and_filter_all(state_name: str, semantic_options: dict, state_geometry: BaseGeometry, mode: str) -&gt; list[str]</code>: Performs automatic, paginated Solr search operations over the EDI PASTA API and filters results using Shapely containment/intersection testing.</li>
+            <li><code>search_and_filter_all(state_name: str, semantic_options: dict, state_geometry: BaseGeometry, mode: str, api_key: str | None = None, connector: str = "or") -&gt; list[str]</code>: Performs automatic, paginated Solr search operations over the EDI PASTA API and filters results using Shapely containment/intersection testing.</li>
             <li><code>load_state_bbox(state_name: str) -&gt; dict[str, float]</code>: Returns the pre-computed Solr spatial range limits mapping <code>{"minLon", "maxLon", "maxLat", "minLat"}</code>.</li>
             <li><code>validate_coordinates(lon: float, lat: float) -&gt; bool</code>: Validates decimal coordinates boundaries range checking.</li>
         </ul>
@@ -194,7 +194,9 @@ package_ids = search_and_filter_all(
     state_name="South Carolina",
     semantic_options=filters,
     state_geometry=state_geom,
-    mode="intersects"  # "within" checks strict full containment, "intersects" includes border-crossing boxes
+    mode="intersects",      # "within" checks strict full containment, "intersects" includes border-crossing boxes
+    api_key="your_secret_key",
+    connector="or"         # Combines keywords and organization using "OR" (default), or "and" for strict matching
 )
 
 # 4. Consume matching package IDs

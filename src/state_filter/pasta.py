@@ -23,6 +23,7 @@ def build_solr_query(
     start: int = 0,
     rows: int = 1000,
     api_key: str | None = None,
+    connector: str = "or",
 ) -> list[tuple[str, str]]:
     """Constructs the list of query parameters for the PASTA Solr search.
 
@@ -87,8 +88,9 @@ def build_solr_query(
             joined_vals = " OR ".join(quoted_vals)
             q_parts.append(f"{solr_field}:({joined_vals})")
 
-    # Combine field clauses using AND, or fallback to all documents
-    q_str = " AND ".join(q_parts) if q_parts else "*:*"
+    # Combine field clauses using the specified connector (AND / OR)
+    connector_str = f" {connector.strip().upper()} "
+    q_str = connector_str.join(q_parts) if q_parts else "*:*"
 
     # Construct the final list of query parameters
     params = [
@@ -223,6 +225,7 @@ def search_and_filter_all(
     mode: str,
     timeout: int = 30,
     api_key: str | None = None,
+    connector: str = "or",
 ) -> list[str]:
     """Queries PASTA REST API in a paginated loop and filters all results.
 
@@ -233,6 +236,7 @@ def search_and_filter_all(
         mode: Filtering precision mode. Either "within" or "intersects".
         timeout: HTTP request timeout in seconds.
         api_key: Optional API key query parameter to append to PASTA REST API requests.
+        connector: Optional logical connector to combine semantic options (AND/OR).
 
     Returns:
         list[str]: Aggregated list of all matching unique package IDs.
@@ -243,7 +247,12 @@ def search_and_filter_all(
 
     while True:
         query_params = build_solr_query(
-            state_name, semantic_options, start=start, rows=rows, api_key=api_key
+            state_name,
+            semantic_options,
+            start=start,
+            rows=rows,
+            api_key=api_key,
+            connector=connector,
         )
         xml_response = search_pasta(query_params, timeout=timeout)
 

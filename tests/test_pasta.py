@@ -49,7 +49,12 @@ def test_build_solr_query_semantic() -> None:
     assert 'organization:("NIN-LTER" OR "LTER")' in q_val
     assert 'keyword:("sediment" OR "sand")' in q_val
     assert 'geographicdescription:"North Inlet"' in q_val
-    assert " AND " in q_val
+    assert " OR " in q_val
+
+    # Test explicit "and" connector
+    params_and = build_solr_query("South Carolina", semantic_opts, connector="and")
+    q_val_and = dict(params_and)["q"]
+    assert " AND " in q_val_and
 
 
 def test_build_solr_query_api_key() -> None:

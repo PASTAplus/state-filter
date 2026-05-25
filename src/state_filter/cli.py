@@ -86,6 +86,12 @@ def merge_list_option(cli_vals: tuple[str, ...], file_val: Any) -> list[str]:
     "--api-key",
     help="Optional API key query parameter to append to PASTA REST API requests.",
 )
+@click.option(
+    "--connector",
+    "-c",
+    type=click.Choice(["and", "or"]),
+    help="Logical connector for combining semantic options. [default: or]",
+)
 def main(
     state: str,
     organization: tuple[str, ...],
@@ -95,6 +101,7 @@ def main(
     options_file: str | None,
     mode: str,
     api_key: str | None = None,
+    connector: str | None = None,
 ) -> None:
     """Filter EDI PASTA data packages by US State and semantic options.
 
@@ -137,6 +144,9 @@ def main(
     # Resolve API key from CLI or options file
     resolved_api_key = api_key or options_data.get("api_key") or options_data.get("key")
 
+    # Resolve logical connector from CLI or options file, defaulting to "or"
+    resolved_connector = connector or options_data.get("connector") or "or"
+
     try:
         # 1. Resolve and validate target US State geometry using Shapely
         state_geometry = load_state_geometry(state)
@@ -150,7 +160,12 @@ def main(
     try:
         # Query PASTA REST API in a paginated loop and filter spatially
         matching_packages = search_and_filter_all(
-            state, semantic_options, state_geometry, mode, api_key=resolved_api_key
+            state,
+            semantic_options,
+            state_geometry,
+            mode,
+            api_key=resolved_api_key,
+            connector=resolved_connector,
         )
 
         # 5. Output matching package IDs

@@ -81,6 +81,20 @@ def test_cli_api_key_forwarding(mock_search_filter: Any) -> None:
     assert call_kwargs["api_key"] == "secret123"
 
 
+@patch("state_filter.cli.search_and_filter_all")
+def test_cli_connector_forwarding(mock_search_filter: Any) -> None:
+    """Verifies that the --connector argument is correctly forwarded."""
+    mock_search_filter.return_value = []
+
+    runner = CliRunner()
+    result = runner.invoke(main, ["South Carolina", "--connector", "and"])
+
+    assert result.exit_code == 0
+    # Verify connector kwargs passed to search_and_filter_all
+    call_kwargs = mock_search_filter.call_args[1]
+    assert call_kwargs["connector"] == "and"
+
+
 def test_cli_invalid_state() -> None:
     """Verifies that the CLI returns failure on invalid state input."""
     runner = CliRunner()
