@@ -45,7 +45,7 @@ def merge_list_option(cli_vals: tuple[str, ...], file_val: Any) -> list[str]:
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
 
-@click.command()
+@click.command(context_settings=CONTEXT_SETTINGS)
 @click.argument("state", type=str)
 @click.option(
     "--mode",
