@@ -44,7 +44,12 @@ Usage: state-filter [OPTIONS] STATE
 
   Filter EDI PASTA data packages by US State and semantic options.
 
+  STATE is the name of the US State (e.g., "South Carolina", "Alaska").
+
 Options:
+  -m, --mode [within|intersects]  Spatial filtering mode (within US State
+                                  geometry vs. intersecting).  [default:
+                                  within]
   -o, --organization TEXT         Filter by organization name. Can be
                                   specified multiple times.
   -g, --geographic TEXT           Filter by geographic place name. Can be
@@ -55,14 +60,11 @@ Options:
                                   multiple times.
   -f, --options-file FILE         Path to JSON file containing structured
                                   query filter options.
-  -m, --mode [within|intersects]  Spatial filtering mode (within US State
-                                  geometry vs. intersecting).  [default:
-                                  within]
-  --api-key TEXT                  Optional API key query parameter to append to
-                                  PASTA REST API requests.
-  -c, --connector [and|or]        Logical connector for combining semantic options.
-                                  [default: or]
-  --help                          Show this message and exit.
+  -c, --connector [and|or]        Logical connector for combining semantic
+                                  options. [default: or]
+  --api-key TEXT                  Optional API key query parameter to append
+                                  to PASTA REST API requests.
+  -h, --help                      Show this message and exit.
 ```
 
 ### Examples
