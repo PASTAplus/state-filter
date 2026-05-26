@@ -24,11 +24,12 @@ def build_solr_query(
     rows: int = 1000,
     api_key: str | None = None,
     connector: str = "or",
+    mode: str = "within",
 ) -> list[tuple[str, str]]:
     """Constructs the list of query parameters for the PASTA Solr search.
 
     The state_name is used to retrieve the pre-computed state bounding box,
-    which is passed as a filter query (fq) using the IsWithin spatial operator.
+    which is passed as a filter query (fq) using the IsWithin or Intersects spatial operator.
     Other optional semantic parameters are mapped to Solr metadata fields in the
     main query (q) parameter using Extended DisMax (eDisMax) syntax.
 
@@ -37,16 +38,20 @@ def build_solr_query(
         semantic_options: Dictionary containing optional filters.
         start: Bounding box search pagination start offset.
         rows: Number of matching documents to retrieve per page.
+        api_key: Optional API key.
+        connector: Logical connector (and/or) for semantic options.
+        mode: Spatial filtering mode ("within" or "intersects").
 
     Returns:
         list[tuple[str, str]]: List of query parameter tuples suitable for requests.
     """
     bbox = load_state_bbox(state_name)
 
-    # Format the IsWithin spatial query using standard WKT ENVELOPE syntax
-    # expected by Solr/PASTA: coordinates:"IsWithin(ENVELOPE(West, East, North, South))"
+    # Format the spatial query using standard WKT ENVELOPE syntax
+    # expected by Solr/PASTA: coordinates:"IsWithin(ENVELOPE(...))" or "Intersects(ENVELOPE(...))"
+    operator = "IsWithin" if mode == "within" else "Intersects"
     spatial_fq = (
-        f'coordinates:"IsWithin(ENVELOPE({bbox["minLon"]}, {bbox["maxLon"]}, '
+        f'coordinates:"{operator}(ENVELOPE({bbox["minLon"]}, {bbox["maxLon"]}, '
         f'{bbox["maxLat"]}, {bbox["minLat"]}))"'
     )
 
@@ -189,7 +194,17 @@ def parse_and_filter_results(
                     ):
                         continue
 
-                    pkg_geom = shapely.geometry.box(min_lon, min_lat, max_lon, max_lat)
+                    # Handle degenerate coordinate bounds (points or lines) elegantly
+                    if min_lon == max_lon and min_lat == max_lat:
+                        pkg_geom = shapely.geometry.Point(min_lon, min_lat)
+                    elif min_lon == max_lon or min_lat == max_lat:
+                        pkg_geom = shapely.geometry.LineString(
+                            [(min_lon, min_lat), (max_lon, max_lat)]
+                        )
+                    else:
+                        pkg_geom = shapely.geometry.box(
+                            min_lon, min_lat, max_lon, max_lat
+                        )
             else:
                 if len(nums) == 4:
                     # West South East North -> minLon, minLat, maxLon, maxLat
@@ -202,7 +217,17 @@ def parse_and_filter_results(
                     ):
                         continue
 
-                    pkg_geom = shapely.geometry.box(min_lon, min_lat, max_lon, max_lat)
+                    # Handle degenerate coordinate bounds (points or lines) elegantly
+                    if min_lon == max_lon and min_lat == max_lat:
+                        pkg_geom = shapely.geometry.Point(min_lon, min_lat)
+                    elif min_lon == max_lon or min_lat == max_lat:
+                        pkg_geom = shapely.geometry.LineString(
+                            [(min_lon, min_lat), (max_lon, max_lat)]
+                        )
+                    else:
+                        pkg_geom = shapely.geometry.box(
+                            min_lon, min_lat, max_lon, max_lat
+                        )
 
                 elif len(nums) == 2:
                     # Point representation: Longitude Latitude
@@ -265,6 +290,7 @@ def search_and_filter_all(
             rows=rows,
             api_key=api_key,
             connector=connector,
+            mode=mode,
         )
         xml_response = search_pasta(query_params, timeout=timeout)
 

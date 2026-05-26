@@ -18,9 +18,10 @@ We have completed the implementation of the `state-filter` command line applicat
 * Generated a pre-computed JSON lookup `bounding_boxes.json` mapping states to exact longitudinal/latitudinal ranges (`minLon`, `maxLon`, `maxLat`, `minLat`).
 
 ### 3. Solr WKT Spatial Querying & Secure Parsing (`state_filter/pasta.py`)
-* Formatted spatial filters using Solr's strict WKT syntax: `coordinates:"IsWithin(ENVELOPE(minLon, maxLon, maxLat, minLat))"`.
+* Formatted candidate spatial filters using Solr's WKT syntax dynamically based on the selected mode: `coordinates:"IsWithin(ENVELOPE(...))"` by default (for `"within"` mode) to strictly enclose coordinates, and `coordinates:"Intersects(ENVELOPE(...))"` (for `"intersects"` mode). Using `Intersects` when requested ensures that packages with multiple coordinate elements spread across different regions (e.g. some in California, some outside) are successfully retrieved as candidates by Solr and then filtered in-memory using Shapely.
 * Implemented secure XML parsing using `defusedxml.ElementTree` to safeguard against XXE (XML External Entity) and entity expansion vulnerability vectors.
 * Enabled parsing of returned coordinates represented in both raw space-separated format (`West South East North`) and Solr's native spatial `ENVELOPE(West, East, North, South)` structure.
+* **Point & Degenerate Envelope Normalization:** Gracefully normalizes point-like bounding boxes (where min/max longitude and latitude are equal) into `shapely.geometry.Point` geometries and line-like bounding boxes into `shapely.geometry.LineString` geometries, avoiding topologically invalid degenerate polygons and ensuring 100% accurate spatial operations.
 * Performed high-precision geometry validation using Shapely checking:
   * `within` (Default): `state_geometry.contains(pkg_box)`
   * `intersects`: `state_geometry.intersects(pkg_box)`
@@ -57,15 +58,15 @@ We have completed the implementation of the `state-filter` command line applicat
 ## 🧪 Verification & Quality Control
 
 ### 1. Pytest Suite
-We implemented 25 distinct tests verifying every tier of the application under `tests/`:
+We implemented 26 distinct tests verifying every tier of the application under `tests/`:
 * **`tests/test_geo.py`**: Asserts bounding boxes, boundary containment/intersections, and coordinates validation range limits.
-* **`tests/test_pasta.py`**: Confirms correct Solr eDisMax query serialization, WKT encoding, secure parsing, paginated query offsets, API key forwarding, custom logical connectors (AND/OR), and **logical ANY matching across multiple coordinates elements**.
+* **`tests/test_pasta.py`**: Confirms correct Solr eDisMax query serialization, WKT encoding, secure parsing, paginated query offsets, API key forwarding, custom logical connectors (AND/OR), logical ANY matching across multiple coordinates elements, and **graceful handling/normalizing of degenerate point/line envelopes**.
 * **`tests/test_cli.py`**: Uses Click `CliRunner` to check options parsing, file merging logic, standard output, and verifies that `--api-key` and `--connector` arguments are correctly forwarded.
 
 ```bash
 pixi run test
 ```
-**Results:** `25 passed in 0.19s` (100% success).
+**Results:** `26 passed in 0.20s` (100% success).
 
 ### 2. Formatting & Linting
 Enforced ruff linter and PEP 8 styling completely:

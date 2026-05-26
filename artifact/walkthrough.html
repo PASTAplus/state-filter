@@ -181,9 +181,10 @@
 
         <h3>3. Solr WKT Spatial Querying & Secure Parsing (<code>state_filter/pasta.py</code>)</h3>
         <ul>
-            <li>Formatted spatial filters using Solr's strict WKT syntax: <code>coordinates:"IsWithin(ENVELOPE(minLon, maxLon, maxLat, minLat))"</code>.</li>
+            <li>Formatted candidate spatial filters using Solr's WKT syntax dynamically based on the selected mode: <code>coordinates:"IsWithin(ENVELOPE(...))"</code> by default (for <code>"within"</code> mode) to strictly enclose coordinates, and <code>coordinates:"Intersects(ENVELOPE(...))"</code> (for <code>"intersects"</code> mode). Using <code>Intersects</code> when requested ensures that packages with multiple coordinate elements spread across different regions (e.g. some in California, some outside) are successfully retrieved as candidates by Solr and then filtered in-memory using Shapely.</li>
             <li>Implemented secure XML parsing using <code>defusedxml.ElementTree</code> to safeguard against XXE (XML External Entity) and entity expansion vulnerability vectors.</li>
             <li>Enabled parsing of returned coordinates represented in both raw space-separated format (<code>West South East North</code>) and Solr's native spatial <code>ENVELOPE(West, East, North, South)</code> structure.</li>
+            <li><strong>Point & Degenerate Envelope Normalization:</strong> Gracefully normalizes point-like bounding boxes (where min/max longitude and latitude are equal) into <code>shapely.geometry.Point</code> geometries and line-like bounding boxes into <code>shapely.geometry.LineString</code> geometries, avoiding topologically invalid degenerate polygons and ensuring 100% accurate spatial operations.</li>
             <li>Performed high-precision geometry validation using Shapely checking:
                 <ul>
                     <li><code>within</code> (Default): <code>state_geometry.contains(pkg_box)</code></li>
@@ -222,19 +223,26 @@
             <li>Supported a structured <code>--options-file &lt;path&gt;</code> in JSON format to merge complex nested configurations gracefully.</li>
         </ul>
 
+        <h3>8. Multiple Coordinates Support (Logical ANY)</h3>
+        <ul>
+            <li>Enhanced spatial extraction logic using <code>doc.findall(".//spatialCoverage/coordinates")</code> to support data packages returning multiple <code>&lt;coordinates&gt;</code> tags across one or more <code>&lt;spatialCoverage&gt;</code> sections.</li>
+            <li>Implemented a logical <strong><code>ANY</code></strong> boundary matching system: if <em>any</em> coordinates satisfy the target containment/intersection boundary check, the package is included.</li>
+            <li>Standardized coordinate extraction to handle malformed coordinates robustly without breaking package processing iteration.</li>
+        </ul>
+
         <hr>
 
         <h2 id="verification-quality-control">🧪 Verification & Quality Control</h2>
 
         <h3>1. Pytest Suite</h3>
-        <p>We implemented 24 distinct tests verifying every tier of the application under <code>tests/</code>:</p>
+        <p>We implemented 26 distinct tests verifying every tier of the application under <code>tests/</code>:</p>
         <ul>
             <li><strong><code>tests/test_geo.py</code></strong>: Asserts bounding boxes, boundary containment/intersections, and coordinates validation range limits.</li>
-            <li><strong><code>tests/test_pasta.py</code></strong>: Confirms correct Solr eDisMax query serialization, WKT encoding, secure parsing, and <strong>verifies both paginated query offsets, api-key forwarding, and custom logical connectors (AND/OR)</strong>.</li>
-            <li><strong><code>tests/test_cli.py</code></strong>: Uses Click <code>CliRunner</code> to check options parsing, file merging logic, standard output, and <strong>verifies that --api-key and --connector arguments are correctly forwarded</strong>.</li>
+            <li><strong><code>tests/test_pasta.py</code></strong>: Confirms correct Solr eDisMax query serialization, WKT encoding, secure parsing, paginated query offsets, API key forwarding, custom logical connectors (AND/OR), logical ANY matching across multiple coordinates elements, and <strong>graceful handling/normalizing of degenerate point/line envelopes</strong>.</li>
+            <li><strong><code>tests/test_cli.py</code></strong>: Uses Click <code>CliRunner</code> to check options parsing, file merging logic, standard output, and verifies that <code>--api-key</code> and <code>--connector</code> arguments are correctly forwarded.</li>
         </ul>
         <pre><code>pixi run test</code></pre>
-        <p><strong>Results:</strong> <code>24 passed in 0.22s</code> (100% success).</p>
+        <p><strong>Results:</strong> <code>26 passed in 0.20s</code> (100% success).</p>
 
         <h3>2. Formatting & Linting</h3>
         <p>Enforced ruff linter and PEP 8 styling completely:</p>

@@ -30,6 +30,11 @@ def test_build_solr_query_default() -> None:
     assert "-scope:ecotrends" in fq_values
     assert "-scope:lter-landsat*" in fq_values
 
+    # Verify that mode='intersects' changes the spatial operator to Intersects
+    params_intersects = build_solr_query("South Carolina", {}, mode="intersects")
+    fq_values_intersects = [v for k, v in params_intersects if k == "fq"]
+    assert fq_values_intersects[0].startswith('coordinates:"Intersects')
+
 
 def test_build_solr_query_semantic() -> None:
     """Tests build_solr_query with single and multi-value semantic filters."""
@@ -222,6 +227,50 @@ def test_parse_and_filter_results_multi_coordinates() -> None:
     assert "pkg.multi.coords.2" in results
     assert "pkg.multi.malformed.3" in results
     assert "pkg.multi.outside.4" not in results
+
+
+def test_parse_and_filter_results_degenerate_envelopes() -> None:
+    """Verifies that point-like and line-like envelope/box coordinate formats are handled gracefully."""
+    # A simplified state polygon representing a 10x10 square: Lon [0, 10], Lat [0, 10]
+    state_geom = shapely.geometry.box(0, 0, 10, 10)
+
+    # XML mock response with degenerate boxes (point and line envelopes)
+    xml_content = """<?xml version="1.0" encoding="utf-8"?>
+    <resultset numFound="4" start="0" rows="10">
+        <document>
+            <packageid>pkg.degenerate.point.envelope</packageid>
+            <spatialCoverage>
+                <coordinates>ENVELOPE(5.0, 5.0, 5.0, 5.0)</coordinates>
+            </spatialCoverage>
+        </document>
+        <document>
+            <packageid>pkg.degenerate.line.envelope</packageid>
+            <spatialCoverage>
+                <coordinates>ENVELOPE(5.0, 5.0, 8.0, 2.0)</coordinates>
+            </spatialCoverage>
+        </document>
+        <document>
+            <packageid>pkg.degenerate.point.raw</packageid>
+            <spatialCoverage>
+                <coordinates>5.0 5.0 5.0 5.0</coordinates>
+            </spatialCoverage>
+        </document>
+        <document>
+            <packageid>pkg.degenerate.line.raw</packageid>
+            <spatialCoverage>
+                <coordinates>5.0 2.0 5.0 8.0</coordinates>
+            </spatialCoverage>
+        </document>
+    </resultset>
+    """
+
+    results = parse_and_filter_results(xml_content, state_geom, "within")
+
+    # All should match because they resolve to valid Points/LineStrings located inside the state geometry
+    assert "pkg.degenerate.point.envelope" in results
+    assert "pkg.degenerate.line.envelope" in results
+    assert "pkg.degenerate.point.raw" in results
+    assert "pkg.degenerate.line.raw" in results
 
 
 @patch("state_filter.pasta.search_pasta")
