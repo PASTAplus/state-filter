@@ -61,6 +61,8 @@ Options:
                                   multiple times.
   -t, --title TEXT                Filter by package title. Can be specified
                                   multiple times.
+  -u, --author TEXT               Filter by author name. Can be specified
+                                  multiple times.
   -f, --options-file FILE         Path to JSON file containing structured
                                   query filter options.
   -c, --connector [and|or]        Logical connector for combining semantic

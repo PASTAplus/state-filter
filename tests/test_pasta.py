@@ -44,6 +44,7 @@ def test_build_solr_query_semantic() -> None:
         "keyword": ["sediment", "sand"],
         "geographic": "North Inlet",
         "title": "greenhouse",
+        "author": "Stanley",
     }
 
     params = build_solr_query("South Carolina", semantic_opts)
@@ -56,6 +57,7 @@ def test_build_solr_query_semantic() -> None:
     assert 'keyword:("sediment" OR "sand")' in q_val
     assert 'geographicdescription:"North Inlet"' in q_val
     assert 'title:"greenhouse"' in q_val
+    assert 'author:"Stanley"' in q_val
     assert " OR " in q_val
 
     # Test explicit "and" connector

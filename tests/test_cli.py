@@ -46,6 +46,7 @@ def test_cli_options_file_merging(mock_search_filter: Any) -> None:
             "organization": ["NIN-LTER"],
             "keyword": ["sediment", "sand"],
             "title": ["EDI"],
+            "author": ["Raymond"],
         }
         with open("options.json", "w", encoding="utf-8") as f:
             json.dump(options, f)
@@ -59,6 +60,8 @@ def test_cli_options_file_merging(mock_search_filter: Any) -> None:
                 "mud",
                 "--title",
                 "greenhouse",
+                "--author",
+                "Stanley",
                 "--options-file",
                 "options.json",
             ],
@@ -73,6 +76,8 @@ def test_cli_options_file_merging(mock_search_filter: Any) -> None:
         assert "NIN-LTER" in call_args["organization"]
         assert "greenhouse" in call_args["title"]
         assert "EDI" in call_args["title"]
+        assert "Stanley" in call_args["author"]
+        assert "Raymond" in call_args["author"]
 
 
 @patch("state_filter.cli.search_and_filter_all")

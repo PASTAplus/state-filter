@@ -62,6 +62,7 @@ def build_solr_query(
         "keyword": "keyword",
         "geographic": "geographicdescription",
         "title": "title",
+        "author": "author",
     }
 
     q_parts = []
