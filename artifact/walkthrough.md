@@ -47,20 +47,25 @@ We have completed the implementation of the `state-filter` command line applicat
 * Enabled multi-value parameters (e.g. `--keyword sediment --keyword sand`).
 * Supported a structured `--options-file <path>` in JSON format to merge complex nested configurations gracefully.
 
+### 8. Multiple Coordinates Support (Logical ANY)
+* Enhanced spatial extraction logic using `doc.findall(".//spatialCoverage/coordinates")` to support data packages returning multiple `<coordinates>` tags across one or more `<spatialCoverage>` sections.
+* Implemented a logical **`ANY`** boundary matching system: if *any* coordinates satisfy the target containment/intersection boundary check, the package is included.
+* Standardized coordinate extraction to handle malformed coordinates robustly without breaking package processing iteration.
+
 ---
 
 ## 🧪 Verification & Quality Control
 
 ### 1. Pytest Suite
-We implemented 24 distinct tests verifying every tier of the application under `tests/`:
+We implemented 25 distinct tests verifying every tier of the application under `tests/`:
 * **`tests/test_geo.py`**: Asserts bounding boxes, boundary containment/intersections, and coordinates validation range limits.
-* **`tests/test_pasta.py`**: Confirms correct Solr eDisMax query serialization, WKT encoding, secure parsing, and **verifies both paginated query offsets, api-key forwarding, and custom logical connectors (AND/OR)**.
-* **`tests/test_cli.py`**: Uses Click `CliRunner` to check options parsing, file merging logic, standard output, and **verifies that --api-key and --connector arguments are correctly forwarded**.
+* **`tests/test_pasta.py`**: Confirms correct Solr eDisMax query serialization, WKT encoding, secure parsing, paginated query offsets, API key forwarding, custom logical connectors (AND/OR), and **logical ANY matching across multiple coordinates elements**.
+* **`tests/test_cli.py`**: Uses Click `CliRunner` to check options parsing, file merging logic, standard output, and verifies that `--api-key` and `--connector` arguments are correctly forwarded.
 
 ```bash
 pixi run test
 ```
-**Results:** `24 passed in 0.22s` (100% success).
+**Results:** `25 passed in 0.19s` (100% success).
 
 ### 2. Formatting & Linting
 Enforced ruff linter and PEP 8 styling completely:

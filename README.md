@@ -7,6 +7,7 @@
 ## 🛠️ Features
 
 * **High-Precision Spatial Filtering:** Parses metadata spatial coordinates and filters them against simplified offline US State polygon boundaries using `shapely` geometries.
+* **Multiple Coordinate Elements (Logical ANY):** Seamlessly retrieves and processes datasets containing multiple `<coordinates>` tags (across one or more `<spatialCoverage>` blocks). Implements a logical **`ANY`** spatial operator: if *any* coordinate footprint satisfies the boundary condition (`within` or `intersects`), the package is successfully matched.
 * **Dual Spatial Precision Modes:**
   * `within` (Default): Matches data packages completely enclosed within the state boundary.
   * `intersects`: Matches data packages completely enclosed OR partially crossing the state border (essential for coastal/marine datasets).

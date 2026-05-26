@@ -155,65 +155,77 @@ def parse_and_filter_results(
             continue
         packageid = pkg_id_elem.text.strip()
 
-        # Extract coordinates under spatialCoverage
-        coord_elem = doc.find(".//spatialCoverage/coordinates")
-        if coord_elem is None or not coord_elem.text:
+        # Extract all coordinate elements under spatialCoverage
+        coord_elems = doc.findall(".//spatialCoverage/coordinates")
+        if not coord_elems:
             continue
 
-        coords_str = coord_elem.text.strip()
-        import re
+        any_matched = False
+        for coord_elem in coord_elems:
+            if not coord_elem.text:
+                continue
 
-        # Extract all floats/ints from the coordinates string (supporting ENVELOPE format)
-        nums = [float(x) for x in re.findall(r"[-+]?\d*\.\d+|\b[-+]?\d+\b", coords_str)]
-        if not nums:
-            continue
+            coords_str = coord_elem.text.strip()
+            import re
 
-        pkg_geom = None
+            # Extract all floats/ints from the coordinates string (supporting ENVELOPE format)
+            nums = [
+                float(x) for x in re.findall(r"[-+]?\d*\.\d+|\b[-+]?\d+\b", coords_str)
+            ]
+            if not nums:
+                continue
 
-        if coords_str.upper().startswith("ENVELOPE"):
-            if len(nums) == 4:
-                # ENVELOPE(West, East, North, South) -> minLon, maxLon, maxLat, minLat
-                min_lon, max_lon, max_lat, min_lat = nums
+            pkg_geom = None
 
-                # Validate coordinates range
-                if not (
-                    validate_coordinates(min_lon, min_lat)
-                    and validate_coordinates(max_lon, max_lat)
-                ):
-                    continue
+            if coords_str.upper().startswith("ENVELOPE"):
+                if len(nums) == 4:
+                    # ENVELOPE(West, East, North, South) -> minLon, maxLon, maxLat, minLat
+                    min_lon, max_lon, max_lat, min_lat = nums
 
-                pkg_geom = shapely.geometry.box(min_lon, min_lat, max_lon, max_lat)
-        else:
-            if len(nums) == 4:
-                # West South East North -> minLon, minLat, maxLon, maxLat
-                min_lon, min_lat, max_lon, max_lat = nums
+                    # Validate coordinates range
+                    if not (
+                        validate_coordinates(min_lon, min_lat)
+                        and validate_coordinates(max_lon, max_lat)
+                    ):
+                        continue
 
-                # Validate coordinates range
-                if not (
-                    validate_coordinates(min_lon, min_lat)
-                    and validate_coordinates(max_lon, max_lat)
-                ):
-                    continue
+                    pkg_geom = shapely.geometry.box(min_lon, min_lat, max_lon, max_lat)
+            else:
+                if len(nums) == 4:
+                    # West South East North -> minLon, minLat, maxLon, maxLat
+                    min_lon, min_lat, max_lon, max_lat = nums
 
-                pkg_geom = shapely.geometry.box(min_lon, min_lat, max_lon, max_lat)
+                    # Validate coordinates range
+                    if not (
+                        validate_coordinates(min_lon, min_lat)
+                        and validate_coordinates(max_lon, max_lat)
+                    ):
+                        continue
 
-            elif len(nums) == 2:
-                # Point representation: Longitude Latitude
-                lon, lat = nums
-                if not validate_coordinates(lon, lat):
-                    continue
-                pkg_geom = shapely.geometry.Point(lon, lat)
+                    pkg_geom = shapely.geometry.box(min_lon, min_lat, max_lon, max_lat)
 
-        if pkg_geom is None:
-            continue
+                elif len(nums) == 2:
+                    # Point representation: Longitude Latitude
+                    lon, lat = nums
+                    if not validate_coordinates(lon, lat):
+                        continue
+                    pkg_geom = shapely.geometry.Point(lon, lat)
 
-        # Apply high-precision filtering using Shapely
-        if mode == "within":
-            if state_geometry.contains(pkg_geom):
-                matching_packages.append(packageid)
-        elif mode == "intersects":
-            if state_geometry.intersects(pkg_geom):
-                matching_packages.append(packageid)
+            if pkg_geom is None:
+                continue
+
+            # Apply high-precision filtering using Shapely
+            if mode == "within":
+                if state_geometry.contains(pkg_geom):
+                    any_matched = True
+                    break
+            elif mode == "intersects":
+                if state_geometry.intersects(pkg_geom):
+                    any_matched = True
+                    break
+
+        if any_matched:
+            matching_packages.append(packageid)
 
     return matching_packages
 

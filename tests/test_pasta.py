@@ -170,6 +170,60 @@ def test_parse_and_filter_results_malformed() -> None:
     assert len(results) == 0
 
 
+def test_parse_and_filter_results_multi_coordinates() -> None:
+    """Verifies that datasets with multiple spatialCoverage coordinates are handled correctly (Logical ANY)."""
+    # A simplified state polygon representing a 10x10 square: Lon [0, 10], Lat [0, 10]
+    state_geom = shapely.geometry.box(0, 0, 10, 10)
+
+    # XML mock response with multiple coordinates situations
+    xml_content = """<?xml version="1.0" encoding="utf-8"?>
+    <resultset numFound="4" start="0" rows="10">
+        <document>
+            <packageid>pkg.multi.spatial.1</packageid>
+            <spatialCoverage>
+                <coordinates>12 12 15 15</coordinates>
+            </spatialCoverage>
+            <spatialCoverage>
+                <coordinates>2 2 8 8</coordinates>
+            </spatialCoverage>
+        </document>
+        <document>
+            <packageid>pkg.multi.coords.2</packageid>
+            <spatialCoverage>
+                <coordinates>2 2 8 8</coordinates>
+                <coordinates>12 12 15 15</coordinates>
+            </spatialCoverage>
+        </document>
+        <document>
+            <packageid>pkg.multi.malformed.3</packageid>
+            <spatialCoverage>
+                <coordinates>not-a-number 5 5 5</coordinates>
+                <coordinates>5 5</coordinates>
+            </spatialCoverage>
+        </document>
+        <document>
+            <packageid>pkg.multi.outside.4</packageid>
+            <spatialCoverage>
+                <coordinates>12 12 15 15</coordinates>
+                <coordinates>20 20 25 25</coordinates>
+            </spatialCoverage>
+        </document>
+    </resultset>
+    """
+
+    results = parse_and_filter_results(xml_content, state_geom, "within")
+
+    # Under Logical ANY:
+    # - pkg.multi.spatial.1 should match because the second spatialCoverage is within
+    # - pkg.multi.coords.2 should match because the first coordinate is within
+    # - pkg.multi.malformed.3 should match because the second coordinate is within and the first malformed one is skipped
+    # - pkg.multi.outside.4 should NOT match because neither coordinate is within
+    assert "pkg.multi.spatial.1" in results
+    assert "pkg.multi.coords.2" in results
+    assert "pkg.multi.malformed.3" in results
+    assert "pkg.multi.outside.4" not in results
+
+
 @patch("state_filter.pasta.search_pasta")
 def test_search_and_filter_all_paginated(mock_search: Any) -> None:
     """Tests search_and_filter_all to verify it loops paginated queries correctly."""
