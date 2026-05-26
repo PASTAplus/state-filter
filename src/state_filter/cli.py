@@ -80,6 +80,12 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
     help="Filter by abstract text. Can be specified multiple times.",
 )
 @click.option(
+    "--title",
+    "-t",
+    multiple=True,
+    help="Filter by package title. Can be specified multiple times.",
+)
+@click.option(
     "--options-file",
     "-f",
     type=click.Path(exists=True, dir_okay=False),
@@ -102,6 +108,7 @@ def main(
     geographic: tuple[str, ...],
     keyword: tuple[str, ...],
     abstract: tuple[str, ...],
+    title: tuple[str, ...],
     options_file: str | None,
     connector: str | None = None,
     api_key: str | None = None,
@@ -142,6 +149,7 @@ def main(
         ),
         "keyword": merge_list_option(keyword, options_data.get("keyword")),
         "geographic": merge_list_option(geographic, options_data.get("geographic")),
+        "title": merge_list_option(title, options_data.get("title")),
     }
 
     # Resolve API key from CLI or options file

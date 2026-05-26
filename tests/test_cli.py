@@ -42,7 +42,11 @@ def test_cli_options_file_merging(mock_search_filter: Any) -> None:
     runner = CliRunner()
     with runner.isolated_filesystem():
         # Create temp JSON options file
-        options = {"organization": ["NIN-LTER"], "keyword": ["sediment", "sand"]}
+        options = {
+            "organization": ["NIN-LTER"],
+            "keyword": ["sediment", "sand"],
+            "title": ["EDI"],
+        }
         with open("options.json", "w", encoding="utf-8") as f:
             json.dump(options, f)
 
@@ -53,6 +57,8 @@ def test_cli_options_file_merging(mock_search_filter: Any) -> None:
                 "South Carolina",
                 "--keyword",
                 "mud",
+                "--title",
+                "greenhouse",
                 "--options-file",
                 "options.json",
             ],
@@ -65,6 +71,8 @@ def test_cli_options_file_merging(mock_search_filter: Any) -> None:
         assert "sediment" in call_args["keyword"]
         assert "sand" in call_args["keyword"]
         assert "NIN-LTER" in call_args["organization"]
+        assert "greenhouse" in call_args["title"]
+        assert "EDI" in call_args["title"]
 
 
 @patch("state_filter.cli.search_and_filter_all")

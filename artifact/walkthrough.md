@@ -44,8 +44,8 @@ We have completed the implementation of the `state-filter` command line applicat
 * Added matching JSON options file support to parse `"api_key"` or `"key"` parameters from structured configurations automatically.
 
 ### 7. Click CLI & Options File Merge (`state_filter/cli.py`)
-* Created the primary Click command routing standard arguments (`STATE`) and options (`--keyword`, `--organization`, `--geographic`, `--abstract`).
-* Enabled multi-value parameters (e.g. `--keyword sediment --keyword sand`).
+* Created the primary Click command routing standard arguments (`STATE`) and options (`--keyword`, `--organization`, `--geographic`, `--abstract`, and `--title`).
+* Enabled multi-value parameters (e.g. `--keyword sediment --keyword sand`, `--title greenhouse`).
 * Supported a structured `--options-file <path>` in JSON format to merge complex nested configurations gracefully.
 
 ### 8. Multiple Coordinates Support (Logical ANY)

@@ -61,6 +61,7 @@ def build_solr_query(
         "organization": "organization",
         "keyword": "keyword",
         "geographic": "geographicdescription",
+        "title": "title",
     }
 
     q_parts = []
